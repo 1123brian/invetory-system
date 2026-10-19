@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory & Sales Management System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        @media print {
+            body * { visibility: hidden; }
+            #printable-receipt, #printable-receipt * { visibility: visible; }
+            #printable-receipt { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 15px; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased">
+
+    <!-- TOP BAR / HEADER -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-40 shadow-lg no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-lg shadow-md">
+                    📦 IMS
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white tracking-wide">Stock & Sales Manager</h1>
+                    <p class="text-xs text-slate-400">Cloud-Synced Multi-Store System</p>
+                </div>
+            </div>
+
+            <!-- Firebase Connection & User Status -->
+            <div class="flex items-center space-x-4">
+                <span id="db-status-badge" class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                    Connecting to Cloud...
+                </span>
+                <div id="user-header-section" class="flex items-center space-x-3">
+                    <!-- Dynamic user controls loaded via JS -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:px-6 lg:px-8 py-6 no-print">
+
+        <!-- AUTH / LOGIN VIEW -->
+        <div id="auth-view" class="max-w-md mx-auto my-12 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-6 sm:p-8">
+            <div class="text-center mb-6">
+                <div class="inline-block p-3 bg-blue-500/10 rounded-full text-blue-400 mb-2">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <h2 class="text-2xl font-bold text-white">Cloud Staff Login</h2>
+                <p class="text-sm text-slate-400">Sign in with your assigned staff credentials</p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Email Address</label>
+                    <input type="email" id="login-email" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-blue-500 text-sm" placeholder="user@store.com">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Password</label>
+                    <input type="password" id="login-password" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-blue-500 text-sm" placeholder="••••••••">
+                </div>
+                <button type="submit" id="login-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition shadow-md text-sm">
+                    Sign In to Cloud
+                </button>
+            </form>
+        </div>
+
+        <!-- DASHBOARD CONTAINER -->
+        <div id="dashboard-view" class="hidden space-y-6">
+
+            <!-- NAVIGATION TABS -->
+            <div class="border-b border-slate-700 flex space-x-2 sm:space-x-4 overflow-x-auto pb-1" id="nav-tabs">
+                <!-- Navigation Tabs generated dynamically by RBAC role -->
+            </div>
+
+            <!-- TAB 1: MAIN STORE / IN STORE (Store Manager & Admin) -->
+            <div id="tab-in-store" class="tab-content hidden space-y-6">
+                <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span>🏭</span> Main Store - Goods Intake (In Store)
+                        </h2>
+                        <p class="text-xs text-slate-400">Receive new stock from suppliers (prices starting from KSh 5)</p>
+                    </div>
+                    <button onclick="openModal('add-stock-modal')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-md transition">
+                        <span>+</span> Receive New Stock
+                    </button>
+                </div>
+
+                <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg">
+                    <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                        <h3 class="font-semibold text-slate-200 text-sm">Warehouse Inventory Items</h3>
+                        <input type="text" id="search-main-store" oninput="renderMainStoreTable()" placeholder="Search stock..." class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-48 sm:w-64">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900/70 text-xs uppercase text-slate-400 font-semibold border-b border-slate-700">
+                                <tr>
+                                    <th class="p-3">Product Name</th>
+                                    <th class="p-3">Supplier</th>
+                                    <th class="p-3">Cost Price</th>
+                                    <th class="p-3">Selling Price</th>
+                                    <th class="p-3">Main Store Quantity</th>
+                                    <th class="p-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="main-store-table-body" class="divide-y divide-slate-700/50">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: OUT STORE / DISPATCH (Store Manager & Admin) -->
+            <div id="tab-out-store" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <!-- Stock Transfer Dispatch Box -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg space-y-4">
+                        <div class="border-b border-slate-700 pb-3">
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <span>🚚</span> Dispatch Stock to Shop
+                            </h3>
+                            <p class="text-xs text-slate-400">Transfer inventory from Main Store to Shop Floor</p>
+                        </div>
+                        <form id="transfer-form" onsubmit="handleDispatchTransfer(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Select Item</label>
+                                <select id="transfer-product-id" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                                    <!-- Dynamic options -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Transfer Quantity</label>
+                                <input type="number" id="transfer-quantity" min="1" required placeholder="e.g. 30" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg text-sm font-semibold transition shadow-md">
+                                Dispatch Transfer
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Record Damaged / Expired / Lost Stock -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg space-y-4">
+                        <div class="border-b border-slate-700 pb-3">
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <span>⚠️</span> Record Damaged / Lost / Expired Stock
+                            </h3>
+                            <p class="text-xs text-slate-400">Remove defective or missing goods from Main Store</p>
+                        </div>
+                        <form id="damage-form" onsubmit="handleRecordDamage(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Select Item</label>
+                                <select id="damage-product-id" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                                    <!-- Dynamic options -->
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">Quantity</label>
+                                    <input type="number" id="damage-quantity" min="1" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">Reason</label>
+                                    <select id="damage-reason" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                                        <option value="Damaged">Damaged</option>
+                                        <option value="Expired">Expired</option>
+                                        <option value="Lost / Missing">Lost / Missing</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-lg text-sm font-semibold transition shadow-md">
+                                Log Damaged Stock
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+
+                <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg">
+                    <div class="p-4 border-b border-slate-700">
+                        <h3 class="font-semibold text-slate-200 text-sm">Recent Out-Store Dispatches</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900/70 text-xs uppercase text-slate-400 border-b border-slate-700">
+                                <tr>
+                                    <th class="p-3">Date/Time</th>
+                                    <th class="p-3">Item</th>
+                                    <th class="p-3">Quantity</th>
+                                    <th class="p-3">Dispatched By</th>
+                                    <th class="p-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dispatches-table-body" class="divide-y divide-slate-700/50">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: GOODS RECEIVED (Salesperson & Admin) -->
+            <div id="tab-goods-received" class="tab-content hidden space-y-6">
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <span>📥</span> Goods Received (Shop Inbound Queue)
+                    </h2>
+                    <p class="text-xs text-slate-400">Review stock dispatched from Main Store and confirm receipt into Shop Inventory</p>
+                </div>
+
+                <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg">
+                    <div class="p-4 border-b border-slate-700">
+                        <h3 class="font-semibold text-slate-200 text-sm">Pending Dispatches Awaiting Confirmation</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900/70 text-xs uppercase text-slate-400 border-b border-slate-700">
+                                <tr>
+                                    <th class="p-3">Dispatch Date</th>
+                                    <th class="p-3">Product Name</th>
+                                    <th class="p-3">Quantity</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="received-queue-table-body" class="divide-y divide-slate-700/50">
+                                <!-- Dynamic pending transfers -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg">
+                    <div class="p-4 border-b border-slate-700">
+                        <h3 class="font-semibold text-slate-200 text-sm">Accepted Received Goods Log</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900/70 text-xs uppercase text-slate-400 border-b border-slate-700">
+                                <tr>
+                                    <th class="p-3">Received Date</th>
+                                    <th class="p-3">Product Name</th>
+                                    <th class="p-3">Quantity Added</th>
+                                    <th class="p-3">Accepted By</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accepted-history-table-body" class="divide-y divide-slate-700/50">
+                                <!-- Dynamic accepted transfers -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: GOODS SOLD / POS (Salesperson & Admin) -->
+            <div id="tab-goods-sold" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                    <!-- Shop Products Grid -->
+                    <div class="lg:col-span-2 space-y-4">
+                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between gap-3 items-center">
+                            <div>
+                                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                    <span>🛒</span> Point of Sale (POS)
+                                </h2>
+                                <p class="text-xs text-slate-400">Select shop goods to process customer sales</p>
+                            </div>
+                            <input type="text" id="pos-search" oninput="renderPOSCatalog()" placeholder="Search shop items..." class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-full sm:w-56">
+                        </div>
+
+                        <div id="pos-catalog-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <!-- Dynamic product cards -->
+                        </div>
+                    </div>
+
+                    <!-- Sales Cart & Checkout Pane -->
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl h-fit space-y-4">
+                        <div class="border-b border-slate-700 pb-3 flex justify-between items-center">
+                            <h3 class="font-bold text-white text-base">Current Cart</h3>
+                            <button onclick="clearCart()" class="text-xs text-rose-400 hover:text-rose-300">Clear</button>
+                        </div>
+
+                        <div id="cart-items-container" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                            <!-- Dynamic cart items -->
+                        </div>
+
+                        <div class="border-t border-slate-700 pt-3 space-y-2 text-sm">
+                            <div class="flex justify-between text-slate-300 font-bold text-base">
+                                <span>Total Payable:</span>
+                                <span id="cart-total" class="text-emerald-400 font-mono">KSh 0</span>
+                            </div>
+
+                            <div class="pt-2">
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">PAYMENT METHOD</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button type="button" id="pay-btn-cash" onclick="setPaymentMethod('Cash')" class="py-2 text-xs font-semibold rounded-lg border border-blue-500 bg-blue-600/20 text-blue-300 transition">
+                                        💵 Cash
+                                    </button>
+                                    <button type="button" id="pay-btn-mpesa" onclick="setPaymentMethod('M-Pesa')" class="py-2 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-900 text-slate-400 transition">
+                                        📱 M-Pesa
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="cash-payment-fields" class="space-y-2 pt-1">
+                                <label class="block text-xs font-semibold text-slate-400">Cash Tendered (KSh)</label>
+                                <input type="number" id="cash-tendered" min="0" step="1" oninput="calculateChange()" placeholder="Enter amount..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500">
+                                <div class="flex justify-between text-xs text-slate-300 font-mono pt-1">
+                                    <span>Change Due:</span>
+                                    <span id="cash-change" class="text-amber-400 font-bold">KSh 0</span>
+                                </div>
+                            </div>
+
+                            <div id="mpesa-payment-fields" class="space-y-2 pt-1 hidden">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1">M-Pesa Reference / Code</label>
+                                    <input type="text" id="mpesa-ref" placeholder="e.g. QKH789234X" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500 uppercase">
+                                </div>
+                            </div>
+
+                            <button onclick="processCheckout()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition shadow-lg text-sm mt-3 flex items-center justify-center gap-2">
+                                <span>🖨️</span> Complete Sale & Print Receipt
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg mt-6">
+                    <div class="p-4 border-b border-slate-700">
+                        <h3 class="font-semibold text-slate-200 text-sm">Goods Sold - Transaction History</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900/70 text-xs uppercase text-slate-400 border-b border-slate-700">
+                                <tr>
+                                    <th class="p-3">Receipt #</th>
+                                    <th class="p-3">Date/Time</th>
+                                    <th class="p-3">Items Sold</th>
+                                    <th class="p-3">Payment Method</th>
+                                    <th class="p-3">Total Amount</th>
+                                    <th class="p-3">Cashier</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-history-table-body" class="divide-y divide-slate-700/50">
+                                <!-- Dynamic history -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: REPORTS MODULE -->
+            <div id="tab-reports" class="tab-content hidden space-y-6">
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between gap-3 items-center">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span>📄</span> Reports Module
+                        </h2>
+                        <p class="text-xs text-slate-400">Generate and export official reports</p>
+                    </div>
+                    <div class="flex space-x-2 bg-slate-900 p-1 rounded-lg border border-slate-700" id="reports-subnav-container">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
+                <div id="sub-report-sales" class="space-y-4 hidden">
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-200 text-sm">Sales & Revenue Audit Report</h3>
+                        <button onclick="exportCSV('sales')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition">
+                            📥 Download Sales CSV
+                        </button>
+                    </div>
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-slate-300">
+                                <thead class="bg-slate-900/70 text-xs uppercase text-slate-400 border-b border-slate-700">
+                                    <tr>
+                                        <th class="p-3">Receipt No</th>
+                                        <th class="p-3">Date</th>
+                                        <th class="p-3">Items Purchased</th>
+                                        <th class="p-3">Payment</th>
+                                        <th class="p-3">Cashier</th>
+                                        <th class="p-3 font-mono text-right">Revenue (KSh)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-sales-tbody" class="divide-y divide-slate-700/50"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sub-report-instore" class="space-y-4 hidden">
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-200 text-sm">In-Store Warehouse Valuation & Intake Report</h3>
+                        <button onclick="exportCSV('instore')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition">
+                            📥 Download In-Store CSV
+                        </button>
+                    </div>
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-slate-300">
+                                <thead class="bg-slate-900/70 text-xs uppercase text-slate-400 border-b border-slate-700">
+                                    <tr>
+                                        <th class="p-3">Product Name</th>
+                                        <th class="p-3">Supplier</th>
+                                        <th class="p-3">Unit Cost (KSh)</th>
+                                        <th class="p-3">Selling Price (KSh)</th>
+                                        <th class="p-3">Main Warehouse Qty</th>
+                                        <th class="p-3 text-right">Total Cost Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-instore-tbody" class="divide-y divide-slate-700/50"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sub-report-outstore" class="space-y-4 hidden">
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-200 text-sm">Out-Store Dispatches & Transfer Report</h3>
+                        <button onclick="exportCSV('outstore')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition">
+                            📥 Download Out-Store CSV
+                        </button>
+                    </div>
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-slate-300">
+                                <thead class="bg-slate-900/70 text-xs uppercase text-slate-400 border-b border-slate-700">
+                                    <tr>
+                                        <th class="p-3">Dispatch Date</th>
+                                        <th class="p-3">Item Description</th>
+                                        <th class="p-3">Quantity</th>
+                                        <th class="p-3">Dispatched By</th>
+                                        <th class="p-3">Status</th>
+                                        <th class="p-3">Accepted By</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-outstore-tbody" class="divide-y divide-slate-700/50"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: FINANCIAL ANALYTICS (Admin Only) -->
+            <div id="tab-analytics" class="tab-content hidden space-y-6">
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <span>📊</span> Financial Analytics
+                    </h2>
+                    <p class="text-xs text-slate-400">Global enterprise stock valuation, total revenue, and system management</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-md">
+                        <p class="text-xs text-slate-400 font-semibold uppercase">Total Sales Revenue</p>
+                        <p id="stat-total-revenue" class="text-2xl font-bold text-emerald-400 font-mono mt-1">KSh 0</p>
+                    </div>
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-md">
+                        <p class="text-xs text-slate-400 font-semibold uppercase">Main Store Valuation</p>
+                        <p id="stat-warehouse-value" class="text-2xl font-bold text-blue-400 font-mono mt-1">KSh 0</p>
+                    </div>
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-md">
+                        <p class="text-xs text-slate-400 font-semibold uppercase">Shop Floor Valuation</p>
+                        <p id="stat-shop-value" class="text-2xl font-bold text-purple-400 font-mono mt-1">KSh 0</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg">
+                    <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                        <h3 class="font-semibold text-slate-200 text-sm">Full Activity Audit Log</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300 font-mono">
+                            <thead class="bg-slate-900/70 uppercase text-slate-400 border-b border-slate-700">
+                                <tr>
+                                    <th class="p-3">Timestamp</th>
+                                    <th class="p-3">User</th>
+                                    <th class="p-3">Action Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-log-table-body" class="divide-y divide-slate-700/50"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 7: USER MANAGEMENT & PASSWORDS (Admin Only) -->
+            <div id="tab-users" class="tab-content hidden space-y-6">
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span>👥</span> User & Password Management
+                        </h2>
+                        <p class="text-xs text-slate-400">Manage user accounts and register staff</p>
+                    </div>
+                    <button onclick="openModal('add-user-modal')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-xs font-semibold shadow-md transition">
+                        + Create New User
+                    </button>
+                </div>
+
+                <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-lg">
+                    <div class="p-4 border-b border-slate-700">
+                        <h3 class="font-semibold text-slate-200 text-sm">Registered Accounts</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900/70 text-xs uppercase text-slate-400 border-b border-slate-700">
+                                <tr>
+                                    <th class="p-3">Name</th>
+                                    <th class="p-3">Email</th>
+                                    <th class="p-3">Assigned Role</th>
+                                    <th class="p-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body" class="divide-y divide-slate-700/50"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODALS -->
+    <div id="add-stock-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-lg font-bold text-white">Receive New Stock (Main Store)</h3>
+                <button onclick="closeModal('add-stock-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <form onsubmit="handleAddStock(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Product Name</label>
+                    <input type="text" id="new-item-name" required placeholder="e.g. Tropical Sweets" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Supplier Name</label>
+                    <input type="text" id="new-item-supplier" required placeholder="e.g. Kenafric Industries" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Purchase Cost (KSh)</label>
+                        <input type="number" id="new-item-cost" min="1" step="1" required placeholder="e.g. 3" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Selling Price (KSh)</label>
+                        <input type="number" id="new-item-price" min="1" step="1" required placeholder="e.g. 5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Quantity Received</label>
+                    <input type="number" id="new-item-qty" min="1" required placeholder="e.g. 100" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="flex justify-end space-x-2 pt-3">
+                    <button type="button" onclick="closeModal('add-stock-modal')" class="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg text-sm">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold">Save Stock Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="change-password-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-lg font-bold text-white">🔑 Change Password</h3>
+                <button onclick="closeModal('change-password-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <form onsubmit="handleChangeOwnPassword(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">New Password (Min 6 chars)</label>
+                    <input type="password" id="change-pass-new" minlength="6" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="flex justify-end space-x-2 pt-3">
+                    <button type="button" onclick="closeModal('change-password-modal')" class="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg text-sm">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="add-user-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-lg font-bold text-white">Create New User Account</h3>
+                <button onclick="closeModal('add-user-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <form onsubmit="handleCreateUser(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
+                    <input type="text" id="new-user-name" required placeholder="e.g. John Doe" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Email</label>
+                    <input type="email" id="new-user-email" required placeholder="user@store.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Password (Min 6 chars)</label>
+                    <input type="password" id="new-user-password" minlength="6" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Role</label>
+                    <select id="new-user-role" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                        <option value="Salesperson">Salesperson</option>
+                        <option value="Store Manager">Store Manager</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-2 pt-3">
+                    <button type="button" onclick="closeModal('add-user-modal')" class="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg text-sm">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- THERMAL RECEIPT MODAL -->
+    <div id="receipt-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+            <div id="printable-receipt" class="bg-white text-black p-4 rounded-lg font-mono text-xs space-y-3">
+                <div class="text-center border-b border-dashed border-gray-400 pb-2">
+                    <h2 class="font-bold text-base tracking-wider">RETAIL SHOP POS</h2>
+                    <p class="text-[10px] text-gray-600">Nairobi, Kenya</p>
+                    <p id="receipt-number" class="mt-1 font-bold">RECEIPT #: ---</p>
+                    <p id="receipt-date" class="text-[10px] text-gray-500">---</p>
+                </div>
+                <div class="border-b border-dashed border-gray-400 pb-2">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b border-gray-300">
+                                <th class="pb-1">Item</th>
+                                <th class="pb-1 text-center">Qty</th>
+                                <th class="pb-1 text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="receipt-items-body"></tbody>
+                    </table>
+                </div>
+                <div class="space-y-1 text-right pt-1">
+                    <div class="flex justify-between font-bold text-sm">
+                        <span>TOTAL:</span>
+                        <span id="receipt-total-val">KSh 0</span>
+                    </div>
+                    <div id="receipt-pay-method-row" class="flex justify-between text-[11px]">
+                        <span>Payment:</span>
+                        <span id="receipt-pay-method-val">Cash</span>
+                    </div>
+                    <div id="receipt-cash-row" class="flex justify-between text-[11px]">
+                        <span>Tendered:</span>
+                        <span id="receipt-tendered-val">KSh 0</span>
+                    </div>
+                    <div id="receipt-change-row" class="flex justify-between text-[11px]">
+                        <span>Change:</span>
+                        <span id="receipt-change-val">KSh 0</span>
+                    </div>
+                </div>
+                <div class="text-center border-t border-dashed border-gray-400 pt-2 text-[10px] text-gray-600">
+                    <p>Cashier: <span id="receipt-cashier-val">--</span></p>
+                    <p class="mt-1 font-semibold">Thank you for your business!</p>
+                </div>
+            </div>
+            <div class="flex space-x-2 pt-2">
+                <button onclick="window.print()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-xs transition">
+                    🖨️ Print Receipt
+                </button>
+                <button onclick="closeModal('receipt-modal')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE SDK v10 & APP LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getDatabase, ref, set, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        let state = {
+            currentUser: null,
+            users: {},
+            products: {},
+            transfers: {},
+            sales: {},
+            auditLog: {},
+            cart: [],
+            selectedPaymentMethod: 'Cash'
+        };
+
+        window.state = state;
+
+        const connectedRef = ref(db, ".info/connected");
+        onValue(connectedRef, (snap) => {
+            const badge = document.getElementById('db-status-badge');
+            if (snap.val() === true) {
+                badge.innerText = "● Cloud Connected";
+                badge.className = "hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
+            } else {
+                badge.innerText = "○ Offline Mode";
+                badge.className = "hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono bg-rose-500/10 text-rose-400 border border-rose-500/30";
+            }
+        });
+
+        onValue(ref(db, 'products'), (snap) => {
+            state.products = snap.val() || {};
+            refreshActiveViews();
+        });
+        onValue(ref(db, 'transfers'), (snap) => {
+            state.transfers = snap.val() || {};
+            refreshActiveViews();
+        });
+        onValue(ref(db, 'sales'), (snap) => {
+            state.sales = snap.val() || {};
+            refreshActiveViews();
+        });
+        onValue(ref(db, 'auditLog'), (snap) => {
+            state.auditLog = snap.val() || {};
+            refreshActiveViews();
+        });
+        onValue(ref(db, 'users'), (snap) => {
+            state.users = snap.val() || {};
+            refreshActiveViews();
+        });
+
+        function logAudit(action) {
+            const auditRef = push(ref(db, 'auditLog'));
+            set(auditRef, {
+                timestamp: new Date().toLocaleString('en-KE'),
+                user: state.currentUser ? `${state.currentUser.name} (${state.currentUser.role})` : 'System',
+                action
+            });
+        }
+
+        window.handleLogin = function(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+
+            signInWithEmailAndPassword(auth, email, password)
+                .then((cred) => {
+                    const userEntry = Object.values(state.users).find(u => u.email.toLowerCase() === email.toLowerCase());
+                    state.currentUser = userEntry || { name: email, email, role: 'Salesperson' };
+                    document.getElementById('login-form').reset();
+                    initDashboard();
+                    logAudit("Logged into system");
+                })
+                .catch((err) => {
+                    alert("Authentication failed: " + err.message);
+                });
+        };
+
+        window.logout = function() {
+            signOut(auth).then(() => {
+                state.currentUser = null;
+                state.cart = [];
+                document.getElementById('auth-view').classList.remove('hidden');
+                document.getElementById('dashboard-view').classList.add('hidden');
+                renderUserHeader();
+            });
+        };
+
+        function renderUserHeader() {
+            const container = document.getElementById('user-header-section');
+            if (!state.currentUser) {
+                container.innerHTML = `<span class="text-xs text-slate-400">Please log in</span>`;
+                return;
+            }
+
+            let roleBadgeClass = 'bg-blue-500/20 text-blue-300 border-blue-500/40';
+            if (state.currentUser.role === 'Admin') roleBadgeClass = 'bg-purple-500/20 text-purple-300 border-purple-500/40';
+            if (state.currentUser.role === 'Store Manager') roleBadgeClass = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+            if (state.currentUser.role === 'Salesperson') roleBadgeClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+
+            container.innerHTML = `
+                <div class="text-right hidden sm:block">
+                    <p class="text-sm font-semibold text-slate-100">${state.currentUser.name}</p>
+                    <span class="inline-block text-[10px] px-2 py-0.5 rounded-full border ${roleBadgeClass} font-mono">
+                        ${state.currentUser.role}
+                    </span>
+                </div>
+                <button onclick="openModal('change-password-modal')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs px-2.5 py-1.5 rounded-lg transition">🔑 Password</button>
+                <button onclick="logout()" class="bg-rose-900/40 hover:bg-rose-800/60 border border-rose-700/50 text-rose-200 text-xs px-3 py-1.5 rounded-lg transition">Logout</button>
+            `;
+        }
+
+        window.handleChangeOwnPassword = function(e) {
+            e.preventDefault();
+            const newPass = document.getElementById('change-pass-new').value;
+            const user = auth.currentUser;
+            if (user) {
+                updatePassword(user, newPass).then(() => {
+                    logAudit("Changed account password");
+                    alert("Password updated successfully!");
+                    closeModal('change-password-modal');
+                    e.target.reset();
+                }).catch(err => alert("Error updating password: " + err.message));
+            }
+        };
+
+        window.handleCreateUser = function(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-user-name').value.trim();
+            const email = document.getElementById('new-user-email').value.trim();
+            const password = document.getElementById('new-user-password').value.trim();
+            const role = document.getElementById('new-user-role').value;
+
+            createUserWithEmailAndPassword(auth, email, password)
+                .then((cred) => {
+                    const userRef = push(ref(db, 'users'));
+                    set(userRef, { uid: cred.user.uid, name, email, role });
+                    logAudit(`Created new staff account: ${name} (${role})`);
+                    alert("User account successfully created!");
+                    closeModal('add-user-modal');
+                    e.target.reset();
+                })
+                .catch(err => alert("Failed to create user: " + err.message));
+        };
+
+        function initDashboard() {
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            renderUserHeader();
+
+            const role = state.currentUser.role;
+            const nav = document.getElementById('nav-tabs');
+
+            let tabsHTML = '';
+            if (role === 'Admin' || role === 'Store Manager') {
+                tabsHTML += `
+                    <button onclick="switchTab('in-store')" id="nav-in-store" class="px-4 py-2 text-sm font-semibold rounded-lg transition text-slate-300 hover:text-white hover:bg-slate-800">🏭 In Store (Main)</button>
+                    <button onclick="switchTab('out-store')" id="nav-out-store" class="px-4 py-2 text-sm font-semibold rounded-lg transition text-slate-300 hover:text-white hover:bg-slate-800">🚚 Out Store (Dispatch)</button>
+                `;
+            }
+            if (role === 'Admin' || role === 'Salesperson') {
+                tabsHTML += `
+                    <button onclick="switchTab('goods-received')" id="nav-goods-received" class="px-4 py-2 text-sm font-semibold rounded-lg transition text-slate-300 hover:text-white hover:bg-slate-800">📥 Goods Received</button>
+                    <button onclick="switchTab('goods-sold')" id="nav-goods-sold" class="px-4 py-2 text-sm font-semibold rounded-lg transition text-slate-300 hover:text-white hover:bg-slate-800">🛒 Goods Sold (POS)</button>
+                `;
+            }
+            tabsHTML += `<button onclick="switchTab('reports')" id="nav-reports" class="px-4 py-2 text-sm font-semibold rounded-lg transition text-slate-300 hover:text-white hover:bg-slate-800">📄 Reports</button>`;
+            if (role === 'Admin') {
+                tabsHTML += `
+                    <button onclick="switchTab('analytics')" id="nav-analytics" class="px-4 py-2 text-sm font-semibold rounded-lg transition text-slate-300 hover:text-white hover:bg-slate-800">📊 Analytics</button>
+                    <button onclick="switchTab('users')" id="nav-users" class="px-4 py-2 text-sm font-semibold rounded-lg transition text-slate-300 hover:text-white hover:bg-slate-800">👥 Users</button>
+                `;
+            }
+            nav.innerHTML = tabsHTML;
+
+            if (role === 'Salesperson') switchTab('goods-received');
+            else switchTab('in-store');
+        }
+
+        window.switchTab = function(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('#nav-tabs button').forEach(el => {
+                el.classList.remove('bg-blue-600', 'text-white');
+                el.classList.add('text-slate-300');
+            });
+
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            const targetBtn = document.getElementById(`nav-${tabId}`);
+            if (targetTab) targetTab.classList.remove('hidden');
+            if (targetBtn) {
+                targetBtn.classList.add('bg-blue-600', 'text-white');
+                targetBtn.classList.remove('text-slate-300');
+            }
+            refreshActiveViews();
+        };
+
+        function refreshActiveViews() {
+            renderMainStoreTable();
+            populateProductDropdowns();
+            renderDispatchesTable();
+            renderReceivedQueueTables();
+            renderPOSCatalog();
+            renderSalesHistory();
+            setupReportSubNav();
+            renderReportsData();
+            renderAnalytics();
+            renderUsersTable();
+        }
+
+        window.handleAddStock = function(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-item-name').value.trim();
+            const supplier = document.getElementById('new-item-supplier').value.trim();
+            const cost = parseFloat(document.getElementById('new-item-cost').value);
+            const price = parseFloat(document.getElementById('new-item-price').value);
+            const qty = parseInt(document.getElementById('new-item-qty').value);
+
+            let existingKey = null;
+            let existingProd = null;
+            for (const [key, p] of Object.entries(state.products)) {
+                if (p.name.toLowerCase() === name.toLowerCase()) {
+                    existingKey = key;
+                    existingProd = p;
+                    break;
+                }
+            }
+
+            if (existingProd) {
+                const updatedQty = existingProd.mainStoreQty + qty;
+                update(ref(db, `products/${existingKey}`), {
+                    mainStoreQty: updatedQty,
+                    costPrice: cost,
+                    sellingPrice: price,
+                    supplier
+                });
+            } else {
+                const newRef = push(ref(db, 'products'));
+                set(newRef, {
+                    name,
+                    supplier,
+                    costPrice: cost,
+                    sellingPrice: price,
+                    mainStoreQty: qty,
+                    shopQty: 0
+                });
+            }
+
+            logAudit(`Received ${qty} units of ${name} into Main Store`);
+            closeModal('add-stock-modal');
+            e.target.reset();
+        };
+
+        function renderMainStoreTable() {
+            const tbody = document.getElementById('main-store-table-body');
+            if (!tbody) return;
+            const search = (document.getElementById('search-main-store')?.value || '').toLowerCase();
+            const entries = Object.entries(state.products).filter(([id, p]) => p.name.toLowerCase().includes(search) || p.supplier.toLowerCase().includes(search));
+
+            if (entries.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No stock records found in Main Store</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = entries.map(([id, p]) => `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="p-3 font-semibold text-white">${p.name}</td>
+                    <td class="p-3 text-slate-400">${p.supplier}</td>
+                    <td class="p-3 font-mono text-slate-300">KSh ${p.costPrice.toLocaleString()}</td>
+                    <td class="p-3 font-mono text-emerald-400">KSh ${p.sellingPrice.toLocaleString()}</td>
+                    <td class="p-3">
+                        <span class="px-2.5 py-1 rounded-full text-xs font-mono ${p.mainStoreQty > 20 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
+                            ${p.mainStoreQty} units
+                        </span>
+                    </td>
+                    <td class="p-3 text-right">
+                        <button onclick="quickSelectTransfer('${id}')" class="text-xs bg-blue-600/25 hover:bg-blue-600/40 text-blue-300 border border-blue-500/30 px-2.5 py-1 rounded transition">Transfer ➔</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function populateProductDropdowns() {
+            const transferSelect = document.getElementById('transfer-product-id');
+            const damageSelect = document.getElementById('damage-product-id');
+            const options = Object.entries(state.products).map(([id, p]) => `<option value="${id}">${p.name} (Main Store: ${p.mainStoreQty})</option>`).join('');
+            if (transferSelect) transferSelect.innerHTML = options || `<option value="">No items available</option>`;
+            if (damageSelect) damageSelect.innerHTML = options || `<option value="">No items available</option>`;
+        }
+
+        window.quickSelectTransfer = function(id) {
+            switchTab('out-store');
+            const sel = document.getElementById('transfer-product-id');
+            if (sel) sel.value = id;
+        };
+
+        window.handleDispatchTransfer = function(e) {
+            e.preventDefault();
+            const productId = document.getElementById('transfer-product-id').value;
+            const qty = parseInt(document.getElementById('transfer-quantity').value);
+            const product = state.products[productId];
+
+            if (!product) return;
+            if (qty > product.mainStoreQty) {
+                alert(`Insufficient stock! Available: ${product.mainStoreQty}`);
+                return;
+            }
+
+            update(ref(db, `products/${productId}`), { mainStoreQty: product.mainStoreQty - qty });
+
+            const transferRef = push(ref(db, 'transfers'));
+            set(transferRef, {
+                productId,
+                productName: product.name,
+                quantity: qty,
+                dispatchedBy: state.currentUser.name,
+                dispatchDate: new Date().toLocaleString('en-KE'),
+                status: 'Pending Acceptance'
+            });
+
+            logAudit(`Dispatched ${qty} ${product.name} to shop floor`);
+            alert("Transfer dispatched successfully!");
+            e.target.reset();
+        };
+
+        window.handleRecordDamage = function(e) {
+            e.preventDefault();
+            const productId = document.getElementById('damage-product-id').value;
+            const qty = parseInt(document.getElementById('damage-quantity').value);
+            const reason = document.getElementById('damage-reason').value;
+            const product = state.products[productId];
+
+            if (!product || qty > product.mainStoreQty) {
+                alert("Invalid quantity or product");
+                return;
+            }
+
+            update(ref(db, `products/${productId}`), { mainStoreQty: product.mainStoreQty - qty });
+            logAudit(`Logged ${qty} units of ${product.name} as ${reason}`);
+            alert("Damage logged successfully.");
+            e.target.reset();
+        };
+
+        function renderDispatchesTable() {
+            const tbody = document.getElementById('dispatches-table-body');
+            if (!tbody) return;
+            const entries = Object.entries(state.transfers);
+            if (entries.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500 italic">No transfer dispatches recorded</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = entries.map(([id, t]) => `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="p-3 text-xs font-mono text-slate-400">${t.dispatchDate}</td>
+                    <td class="p-3 font-semibold text-white">${t.productName}</td>
+                    <td class="p-3 font-mono">${t.quantity}</td>
+                    <td class="p-3 text-slate-400">${t.dispatchedBy}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[11px] font-medium ${t.status === 'Accepted' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}">${t.status}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        function renderReceivedQueueTables() {
+            const queueBody = document.getElementById('received-queue-table-body');
+            const historyBody = document.getElementById('accepted-history-table-body');
+            if (!queueBody || !historyBody) return;
+
+            const pending = Object.entries(state.transfers).filter(([id, t]) => t.status === 'Pending Acceptance');
+            const accepted = Object.entries(state.transfers).filter(([id, t]) => t.status === 'Accepted');
+
+            queueBody.innerHTML = pending.length === 0 ? `<tr><td colspan="5" class="p-4 text-center text-slate-500 italic">No pending stock arrivals waiting for receipt</td></tr>` :
+                pending.map(([id, t]) => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-3 text-xs font-mono text-slate-400">${t.dispatchDate}</td>
+                        <td class="p-3 font-semibold text-white">${t.productName}</td>
+                        <td class="p-3 font-mono text-emerald-400">${t.quantity} units</td>
+                        <td class="p-3"><span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded text-xs">Awaiting Acceptance</span></td>
+                        <td class="p-3 text-right">
+                            <button onclick="acceptStockTransfer('${id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3 py-1.5 rounded-lg shadow transition">✓ Confirm & Accept</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+            historyBody.innerHTML = accepted.length === 0 ? `<tr><td colspan="4" class="p-4 text-center text-slate-500 italic">No accepted transfers recorded</td></tr>` :
+                accepted.map(([id, t]) => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-3 text-xs font-mono text-slate-400">${t.acceptedDate || t.dispatchDate}</td>
+                        <td class="p-3 font-semibold text-white">${t.productName}</td>
+                        <td class="p-3 font-mono text-emerald-400">+${t.quantity}</td>
+                        <td class="p-3 text-slate-400">${t.acceptedBy || 'Salesperson'}</td>
+                    </tr>
+                `).join('');
+        }
+
+        window.acceptStockTransfer = function(transferId) {
+            const transfer = state.transfers[transferId];
+            if (!transfer) return;
+            const product = state.products[transfer.productId];
+            if (product) {
+                update(ref(db, `products/${transfer.productId}`), { shopQty: product.shopQty + transfer.quantity });
+            }
+            update(ref(db, `transfers/${transferId}`), {
+                status: 'Accepted',
+                acceptedBy: state.currentUser.name,
+                acceptedDate: new Date().toLocaleString('en-KE')
+            });
+            logAudit(`Accepted receipt of ${transfer.quantity} ${transfer.productName} into shop floor`);
+            alert("Stock successfully received into shop inventory!");
+        };
+
+        function renderPOSCatalog() {
+            const grid = document.getElementById('pos-catalog-grid');
+            if (!grid) return;
+            const search = (document.getElementById('pos-search')?.value || '').toLowerCase();
+            const items = Object.entries(state.products).filter(([id, p]) => p.name.toLowerCase().includes(search));
+
+            if (items.length === 0) {
+                grid.innerHTML = `<div class="col-span-full p-8 text-center text-slate-500 italic bg-slate-800 rounded-xl border border-slate-700">No shop products available. Accept transfers from Main Store first!</div>`;
+                return;
+            }
+
+            grid.innerHTML = items.map(([id, p]) => `
+                <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col justify-between hover:border-slate-600 transition shadow-md">
+                    <div>
+                        <h4 class="font-bold text-white text-sm line-clamp-1">${p.name}</h4>
+                        <p class="text-xs text-slate-400 mb-2">Shop Stock: <span class="font-mono font-bold ${p.shopQty > 0 ? 'text-emerald-400' : 'text-rose-400'}">${p.shopQty}</span></p>
+                    </div>
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-700/60">
+                        <span class="font-mono font-bold text-sm text-emerald-400">KSh ${p.sellingPrice.toLocaleString()}</span>
+                        <button onclick="addToCart('${id}')" ${p.shopQty <= 0 ? 'disabled' : ''} class="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-xs px-2.5 py-1.5 rounded-lg transition font-semibold">+ Add</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.addToCart = function(productId) {
+            const product = state.products[productId];
+            if (!product || product.shopQty <= 0) return;
+            const existing = state.cart.find(c => c.productId === productId);
+            if (existing) {
+                if (existing.qty + 1 > product.shopQty) {
+                    alert(`Max shop stock reached (${product.shopQty})`);
+                    return;
+                }
+                existing.qty += 1;
+            } else {
+                state.cart.push({ productId, name: product.name, price: product.sellingPrice, qty: 1 });
+            }
+            renderCart();
+        };
+
+        window.updateCartQty = function(productId, delta) {
+            const item = state.cart.find(c => c.productId === productId);
+            if (!item) return;
+            const product = state.products[productId];
+            item.qty += delta;
+            if (item.qty > product.shopQty) item.qty = product.shopQty;
+            if (item.qty <= 0) state.cart = state.cart.filter(c => c.productId !== productId);
+            renderCart();
+        };
+
+        window.clearCart = function() { state.cart = []; renderCart(); };
+
+        window.setPaymentMethod = function(method) {
+            state.selectedPaymentMethod = method;
+            const btnCash = document.getElementById('pay-btn-cash');
+            const btnMpesa = document.getElementById('pay-btn-mpesa');
+            const cashFields = document.getElementById('cash-payment-fields');
+            const mpesaFields = document.getElementById('mpesa-payment-fields');
+            if (method === 'Cash') {
+                btnCash.className = 'py-2 text-xs font-semibold rounded-lg border border-blue-500 bg-blue-600/20 text-blue-300 transition';
+                btnMpesa.className = 'py-2 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-900 text-slate-400 transition';
+                cashFields.classList.remove('hidden');
+                mpesaFields.classList.add('hidden');
+            } else {
+                btnMpesa.className = 'py-2 text-xs font-semibold rounded-lg border border-emerald-500 bg-emerald-600/20 text-emerald-300 transition';
+                btnCash.className = 'py-2 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-900 text-slate-400 transition';
+                mpesaFields.classList.remove('hidden');
+                cashFields.classList.add('hidden');
+            }
+        };
+
+        function renderCart() {
+            const container = document.getElementById('cart-items-container');
+            const totalEl = document.getElementById('cart-total');
+            if (!container || !totalEl) return;
+
+            if (state.cart.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-6 italic">Cart is empty</p>`;
+                totalEl.innerText = `KSh 0`;
+                calculateChange();
+                return;
+            }
+
+            let subtotal = 0;
+            container.innerHTML = state.cart.map(c => {
+                subtotal += c.price * c.qty;
+                return `
+                    <div class="flex items-center justify-between bg-slate-900 p-2 rounded-lg text-xs">
+                        <div class="flex-1 pr-2">
+                            <p class="font-semibold text-slate-200">${c.name}</p>
+                            <p class="text-slate-400 font-mono">KSh ${c.price} x ${c.qty}</p>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <button onclick="updateCartQty('${c.productId}', -1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-5 h-5 rounded flex items-center justify-center font-bold">-</button>
+                            <span class="font-mono text-slate-100 px-1">${c.qty}</span>
+                            <button onclick="updateCartQty('${c.productId}', 1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-5 h-5 rounded flex items-center justify-center font-bold">+</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            totalEl.innerText = `KSh ${subtotal.toLocaleString()}`;
+            calculateChange();
+        }
+
+        window.calculateChange = function() {
+            const total = state.cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+            const tendered = parseFloat(document.getElementById('cash-tendered').value) || 0;
+            document.getElementById('cash-change').innerText = `KSh ${Math.max(0, tendered - total).toLocaleString()}`;
+        };
+
+        window.processCheckout = function() {
+            if (state.cart.length === 0) { alert("Cart is empty!"); return; }
+            const total = state.cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+            if (state.selectedPaymentMethod === 'Cash') {
+                const tendered = parseFloat(document.getElementById('cash-tendered').value) || 0;
+                if (tendered < total) { alert("Insufficient cash tendered!"); return; }
+            } else {
+                const mpesaRef = document.getElementById('mpesa-ref').value.trim();
+                if (!mpesaRef) { alert("Enter M-Pesa Transaction Reference code!"); return; }
+            }
+
+            state.cart.forEach(item => {
+                const p = state.products[item.productId];
+                if (p) update(ref(db, `products/${item.productId}`), { shopQty: p.shopQty - item.qty });
+            });
+
+            const receiptId = 'REC-' + Math.floor(100000 + Math.random() * 900000);
+            const sale = {
+                receiptId,
+                date: new Date().toLocaleString('en-KE'),
+                items: [...state.cart],
+                totalAmount: total,
+                paymentMethod: state.selectedPaymentMethod,
+                mpesaRef: state.selectedPaymentMethod === 'M-Pesa' ? document.getElementById('mpesa-ref').value.trim().toUpperCase() : null,
+                cashTendered: state.selectedPaymentMethod === 'Cash' ? parseFloat(document.getElementById('cash-tendered').value) || total : total,
+                cashier: state.currentUser.name
+            };
+
+            set(push(ref(db, 'sales')), sale);
+            logAudit(`Completed sale #${receiptId} for KSh ${total}`);
+            displayThermalReceipt(sale);
+
+            state.cart = [];
+            document.getElementById('cash-tendered').value = '';
+            document.getElementById('mpesa-ref').value = '';
+            renderCart();
+        };
+
+        function displayThermalReceipt(sale) {
+            document.getElementById('receipt-number').innerText = `RECEIPT #: ${sale.receiptId}`;
+            document.getElementById('receipt-date').innerText = sale.date;
+            document.getElementById('receipt-cashier-val').innerText = sale.cashier;
+            document.getElementById('receipt-items-body').innerHTML = sale.items.map(i => `
+                <tr>
+                    <td class="py-1">${i.name}</td>
+                    <td class="py-1 text-center">${i.qty}</td>
+                    <td class="py-1 text-right">KSh ${(i.price * i.qty).toLocaleString()}</td>
+                </tr>
+            `).join('');
+            document.getElementById('receipt-total-val').innerText = `KSh ${sale.totalAmount.toLocaleString()}`;
+            document.getElementById('receipt-pay-method-val').innerText = sale.paymentMethod === 'M-Pesa' ? `M-Pesa (${sale.mpesaRef})` : 'Cash';
+            openModal('receipt-modal');
+        }
+
+        function renderSalesHistory() {
+            const tbody = document.getElementById('sales-history-table-body');
+            if (!tbody) return;
+            const entries = Object.values(state.sales);
+            if (entries.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No sales transactions logged</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = entries.map(s => `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="p-3 font-mono font-bold text-blue-400">${s.receiptId}</td>
+                    <td class="p-3 text-xs font-mono text-slate-400">${s.date}</td>
+                    <td class="p-3 text-xs">${s.items.map(i => `${i.name} (${i.qty})`).join(', ')}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-xs ${s.paymentMethod === 'M-Pesa' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'}">${s.paymentMethod}</span></td>
+                    <td class="p-3 font-mono font-bold text-emerald-400">KSh ${s.totalAmount.toLocaleString()}</td>
+                    <td class="p-3 text-slate-400">${s.cashier}</td>
+                </tr>
+            `).join('');
+        }
+
+        function setupReportSubNav() {
+            const role = state.currentUser ? state.currentUser.role : 'Admin';
+            const subnav = document.getElementById('reports-subnav-container');
+            if (!subnav) return;
+
+            let pills = '';
+            if (role === 'Admin' || role === 'Salesperson') pills += `<button onclick="switchReportSubTab('sales')" id="subnav-rep-sales" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-400 hover:text-white">Sales Report</button>`;
+            if (role === 'Admin' || role === 'Store Manager') {
+                pills += `<button onclick="switchReportSubTab('instore')" id="subnav-rep-instore" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-400 hover:text-white">In-Store Report</button>`;
+                pills += `<button onclick="switchReportSubTab('outstore')" id="subnav-rep-outstore" class="px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-400 hover:text-white">Out-Store Report</button>`;
+            }
+            subnav.innerHTML = pills;
+            if (role === 'Salesperson') switchReportSubTab('sales');
+            else switchReportSubTab('instore');
+        }
+
+        window.switchReportSubTab = function(type) {
+            ['sales', 'instore', 'outstore'].forEach(t => {
+                const el = document.getElementById(`sub-report-${t}`);
+                if (el) el.classList.add('hidden');
+                const btn = document.getElementById(`subnav-rep-${t}`);
+                if (btn) { btn.classList.remove('bg-blue-600', 'text-white'); btn.classList.add('text-slate-400'); }
+            });
+            const activeView = document.getElementById(`sub-report-${type}`);
+            const activeBtn = document.getElementById(`subnav-rep-${type}`);
+            if (activeView) activeView.classList.remove('hidden');
+            if (activeBtn) { activeBtn.classList.add('bg-blue-600', 'text-white'); activeBtn.classList.remove('text-slate-400'); }
+            renderReportsData();
+        };
+
+        function renderReportsData() {
+            const salesTbody = document.getElementById('report-sales-tbody');
+            if (salesTbody) {
+                const sales = Object.values(state.sales);
+                salesTbody.innerHTML = sales.length === 0 ? `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No sales records available</td></tr>` :
+                    sales.map(s => `
+                        <tr class="hover:bg-slate-800/40">
+                            <td class="p-3 font-mono font-bold text-blue-400">${s.receiptId}</td>
+                            <td class="p-3 text-xs font-mono text-slate-400">${s.date}</td>
+                            <td class="p-3 text-xs">${s.items.map(i => `${i.name} (x${i.qty})`).join(', ')}</td>
+                            <td class="p-3 text-xs">${s.paymentMethod} ${s.mpesaRef ? `(${s.mpesaRef})` : ''}</td>
+                            <td class="p-3 text-slate-400 text-xs">${s.cashier}</td>
+                            <td class="p-3 font-mono font-bold text-emerald-400 text-right">KSh ${s.totalAmount.toLocaleString()}</td>
+                        </tr>
+                    `).join('');
+            }
+
+            const instoreTbody = document.getElementById('report-instore-tbody');
+            if (instoreTbody) {
+                const products = Object.values(state.products);
+                instoreTbody.innerHTML = products.length === 0 ? `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No warehouse intake records found</td></tr>` :
+                    products.map(p => `
+                        <tr class="hover:bg-slate-800/40">
+                            <td class="p-3 font-semibold text-white">${p.name}</td>
+                            <td class="p-3 text-slate-400">${p.supplier}</td>
+                            <td class="p-3 font-mono">KSh ${p.costPrice.toLocaleString()}</td>
+                            <td class="p-3 font-mono text-emerald-400">KSh ${p.sellingPrice.toLocaleString()}</td>
+                            <td class="p-3 font-mono">${p.mainStoreQty} units</td>
+                            <td class="p-3 font-mono font-bold text-blue-400 text-right">KSh ${(p.mainStoreQty * p.costPrice).toLocaleString()}</td>
+                        </tr>
+                    `).join('');
+            }
+
+            const outstoreTbody = document.getElementById('report-outstore-tbody');
+            if (outstoreTbody) {
+                const transfers = Object.values(state.transfers);
+                outstoreTbody.innerHTML = transfers.length === 0 ? `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No dispatches recorded</td></tr>` :
+                    transfers.map(t => `
+                        <tr class="hover:bg-slate-800/40">
+                            <td class="p-3 text-xs font-mono text-slate-400">${t.dispatchDate}</td>
+                            <td class="p-3 font-semibold text-white">${t.productName}</td>
+                            <td class="p-3 font-mono">${t.quantity}</td>
+                            <td class="p-3 text-slate-400">${t.dispatchedBy}</td>
+                            <td class="p-3"><span class="px-2 py-0.5 rounded text-xs ${t.status === 'Accepted' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}">${t.status}</span></td>
+                            <td class="p-3 text-slate-400 text-xs">${t.acceptedBy || 'Pending'}</td>
+                        </tr>
+                    `).join('');
+            }
+        }
+
+        window.exportCSV = function(type) {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            if (type === 'sales') {
+                csvContent += "Receipt Number,Date,Items,Payment Method,Cashier,Total Revenue (KSh)\n";
+                Object.values(state.sales).forEach(s => {
+                    csvContent += `${s.receiptId},${s.date},"${s.items.map(i => `${i.name}(x${i.qty})`).join(';')}",${s.paymentMethod},${s.cashier},${s.totalAmount}\n`;
+                });
+            } else if (type === 'instore') {
+                csvContent += "Product Name,Supplier,Unit Cost (KSh),Selling Price (KSh),Main Store Quantity,Total Cost Value (KSh)\n";
+                Object.values(state.products).forEach(p => {
+                    csvContent += `"${p.name}","${p.supplier}",${p.costPrice},${p.sellingPrice},${p.mainStoreQty},${p.mainStoreQty * p.costPrice}\n`;
+                });
+            } else if (type === 'outstore') {
+                csvContent += "Dispatch Date,Product Name,Quantity,Dispatched By,Status,Accepted By\n";
+                Object.values(state.transfers).forEach(t => {
+                    csvContent += `"${t.dispatchDate}","${t.productName}",${t.quantity},"${t.dispatchedBy}",${t.status},"${t.acceptedBy || 'Pending'}"\n`;
+                });
+            }
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `${type}_report_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        function renderAnalytics() {
+            if (state.currentUser?.role !== 'Admin') return;
+            const totalRev = Object.values(state.sales).reduce((sum, s) => sum + s.totalAmount, 0);
+            const whVal = Object.values(state.products).reduce((sum, p) => sum + (p.mainStoreQty * p.costPrice), 0);
+            const shopVal = Object.values(state.products).reduce((sum, p) => sum + (p.shopQty * p.sellingPrice), 0);
+
+            document.getElementById('stat-total-revenue').innerText = `KSh ${totalRev.toLocaleString()}`;
+            document.getElementById('stat-warehouse-value').innerText = `KSh ${whVal.toLocaleString()}`;
+            document.getElementById('stat-shop-value').innerText = `KSh ${shopVal.toLocaleString()}`;
+
+            const auditTbody = document.getElementById('audit-log-table-body');
+            if (auditTbody) {
+                auditTbody.innerHTML = Object.values(state.auditLog).reverse().map(a => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-2 text-slate-500">${a.timestamp}</td>
+                        <td class="p-2 text-blue-400">${a.user}</td>
+                        <td class="p-2 text-slate-300">${a.action}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function renderUsersTable() {
+            if (state.currentUser?.role !== 'Admin') return;
+            const tbody = document.getElementById('users-table-body');
+            if (tbody) {
+                tbody.innerHTML = Object.values(state.users).map(u => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-3 font-semibold text-white">${u.name}</td>
+                        <td class="p-3 text-slate-400 font-mono text-xs">${u.email}</td>
+                        <td class="p-3"><span class="px-2.5 py-0.5 rounded text-xs font-mono bg-slate-700 text-slate-200">${u.role}</span></td>
+                        <td class="p-3 text-right text-slate-400 text-xs">Active</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        window.openModal = function(id) { document.getElementById(id).classList.remove('hidden'); };
+        window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); };
+		<!-- Your HTML structure and other elements above -->
+
+    <!-- FIREBASE SDK & APP LOGIC -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getDatabase } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAHLTiNZxD07vPKqifozXmdOopR1WjZt64",
+            authDomain: "shoop-9db64.firebaseapp.com",
+            projectId: "shoop-9db64",
+            storageBucket: "shoop-9db64.firebasestorage.app",
+            messagingSenderId: "368494149257",
+            appId: "1:368494149257:web:f6b18ffcf8d5197bea1058",
+            measurementId: "G-8M3N57VC94"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        // All your app logic, login functions, and table renderers go here...
+    </script>
+    </script>
+</body>
+</html>
